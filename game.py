@@ -12,17 +12,19 @@ HIGH_SCORE_FILE = "dino_highscore.txt"
 
 def dino_tint(on_ground):
     """Return an (r, g, b) colour override for the dino based on whether it's on the ground, or None for the default green."""
-    pass
+    if on_ground:
+        return None
+    return (80, 160, 220)
 
 
 def on_obstacle_passed(obstacle, score):
     """Called once, the frame an obstacle finishes scrolling past the dino. Add a sound or a combo counter here."""
-    pass
+    obstacle.passed_at = pygame.time.get_ticks()
 
 
 def max_jumps():
     """Return how many jumps the dino gets before it must land again (2 for a double jump), or None for the default of 1."""
-    pass
+    return 2
 
 
 def load_high_score():
@@ -104,6 +106,7 @@ class Game:
     def reset(self):
         self.dino = Dino(80, GROUND_Y)
         self.obstacles = []
+        self.pass_popups = []
         self.score = 0
         self.speed = 6
         self.spawn_timer = 0
@@ -134,6 +137,7 @@ class Game:
             if not obs.passed and obs.rect.right < self.dino.rect.left:
                 obs.passed = True
                 on_obstacle_passed(obs, self.score // 10)
+                self.pass_popups.append(pygame.time.get_ticks())
             if obs.rect.colliderect(self.dino.rect):
                 hit = True
         self.obstacles = [o for o in self.obstacles if not o.is_off_screen()]
@@ -141,7 +145,7 @@ class Game:
         if hit:
             self.state = "lose"
             current = self.score // 10
-            if self.high_score > current:
+            if current > self.high_score:
                 self.high_score = current
                 save_high_score(self.high_score)
             return
@@ -156,6 +160,12 @@ class Game:
         self.dino.draw(screen)
         for obs in self.obstacles:
             obs.draw(screen)
+
+        now = pygame.time.get_ticks()
+        self.pass_popups = [t for t in self.pass_popups if now - t < 800]
+        if self.pass_popups:
+            popup = self.font.render("+1", True, (40, 150, 70))
+            screen.blit(popup, (self.dino.rect.x, self.dino.rect.top - 30))
 
         score_surf = self.font.render(f"Score: {self.score // 10}   Best: {self.high_score}", True, (50, 50, 50))
         screen.blit(score_surf, (WIDTH - 260, 20))
